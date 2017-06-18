@@ -1,0 +1,118 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: weechat-backup-config
+data:
+  crontab: |
+    */5 * * * * /bin/sh /sync.sh
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: weechat
+spec:
+  selector:
+    matchLabels:
+      app: weechat
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: weechat
+    spec:
+      initContainers:
+      - name: init-logs
+        image: sophaskins/weechat-backup:0.9
+        imagePullPolicy: Always
+        args: ["sh", "/pre-fetch.sh"]
+        volumeMounts:
+        - mountPath: /weechat-logs
+          name: weechat-logs
+        - mountPath: /secrets
+          name: aws-secrets
+      containers:
+      - name: weechat
+        image: sophaskins/weechat:0.9
+        imagePullPolicy: Always
+        stdin: true
+        tty: true
+        ports:
+        - name: relay
+          containerPort: 9000
+        env:
+        - name: WEECHAT_HOME
+          value: /weechat
+        - name: LANG
+          value: en_US.UTF-8
+        - name: LANGUAGE
+          value: en_US:en
+        - name: LC_ALL
+          value: en_US.UTF-8
+        - name: TERM
+          value: screen-256color
+        volumeMounts:
+        - mountPath: /weechat
+          name: weechat-config
+        - mountPath: /weechat-logs
+          name: weechat-logs
+      - name: logs-backup
+        image: sophaskins/weechat-backup:0.9
+        imagePullPolicy: Always
+        args: ["crond", "-f"]
+        volumeMounts:
+        - mountPath: /weechat-logs
+          name: weechat-logs
+        - mountPath: /var/spool/cron/crontabs
+          name: crontabs
+        - mountPath: /secrets
+          name: aws-secrets
+        lifecycle:
+          preStop:
+            exec:
+              command: ["sh", "/sync.sh"]
+      volumes:
+      - name: weechat-config
+        configMap:
+          name: weechat-config
+          items:
+          - key: irc.conf
+            path: irc.conf
+          - key: relay.conf
+            path: relay.conf
+          - key: logger.conf
+            path: logger.conf
+      - name: crontabs
+        configMap:
+          name: weechat-backup-config
+          items:
+          - key: crontab
+            path: root
+      - name: aws-secrets
+        secret:
+          secretName: aws-secrets
+          items:
+          - key: access-key-id
+            path: access-key-id
+          - key: secret-access-key
+            path: secret-access-key
+          - key: s3-bucket
+            path: s3-bucket
+      - name: weechat-logs
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: weechat
+  namespace: kube-weechat
+spec:
+  ports:
+  - name: relay
+    port: 9000
+    protocol: TCP
+    targetPort: relay
+  selector:
+    app: weechat

@@ -1,0 +1,49 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: weechat-config
+  namespace: kube-weechat
+data:
+  irc.conf: |
+    [server_default]
+    autoconnect = on
+    nicks = "human"
+    realname = "A Real Human"
+    username = "human"
+
+    [server]
+    test-irc.addresses = "ngircd.kube-weechat.svc.cluster.local/6667"
+    test-irc.ssl = off
+    test-irc.autojoin = "#kube-weechat"
+
+    freenode.addresses = "chat.freenode.net/6697"
+    freenode.ssl = on
+    freenode.autojoin = "#kube-weechat"
+  relay.conf: |
+    [network]
+    password = "aVerySecurePassword"
+    websocket_allowed_origins = ".*"
+
+    [port]
+    # because ingress provides TLS termination for us, we run an
+    # unencrypted relay on 9000. Clients will connect on 443
+    weechat = 9000
+
+  logger.conf: |
+    [file]
+    mask = "%Y/%m/%d/$plugin.$name.weechatlog"
+    path = "/weechat-logs/"
+    flush_delay = 0
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  namespace: kube-weechat
+  name: aws-secrets
+type: Opaque
+data:
+  # remember, values need to be base64 encoded
+  access-key-id: QUFBQUFBQUFBQUFBQUFBQUFBQUE=
+  s3-bucket: bXktd2VlY2hhdC1sb2dz
+  secret-access-key: c2VjcmV0

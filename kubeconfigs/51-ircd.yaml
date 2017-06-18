@@ -1,0 +1,63 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: ngircd-config
+  namespace: kube-weechat
+data:
+  ngircd.conf: |
+    [Global]
+        Name = irc.kube-weechat.svc.cluster.local
+        Info = kube-weechat private irc network
+    [Options]
+        PAM = no
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: ngircd
+  namespace: kube-weechat
+spec:
+  selector:
+    matchLabels:
+      app: ngircd
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ngircd
+    spec:
+      containers:
+      - name: ngircd
+        image: sophaskins/ngircd:0.9
+        imagePullPolicy: Always
+        args: ["--nodaemon"]
+        ports:
+        - name: irc
+          containerPort: 6667
+        volumeMounts:
+        - mountPath: /etc/ngircd/
+          name: ngircd-conf
+      volumes:
+      - name: ngircd-conf
+        configMap:
+          name: ngircd-config
+          items:
+          - key: ngircd.conf
+            path: ngircd.conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ngircd
+  namespace: kube-weechat
+spec:
+  ports:
+  - name: irc
+    port: 6667
+    protocol: TCP
+    targetPort: irc
+  selector:
+    app: ngircd

@@ -1,0 +1,42 @@
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: glowing-bear
+  namespace: kube-weechat
+  annotations:
+    kubernetes.io/tls-acme: "true"
+spec:
+  tls:
+  - hosts:
+    - glowing-bear.example.net
+    secretName: glowingbear-tls
+  rules:
+  - host: glowing-bear.example.net
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: glowing-bear
+          servicePort: 80
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: weechat
+  namespace: kube-weechat
+  annotations:
+    kubernetes.io/tls-acme: "true"
+spec:
+  tls:
+  - hosts:
+    - weechat.example.net
+    secretName: weechat-tls
+  rules:
+  - host: weechat.example.net
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: weechat
+          servicePort: 9000
