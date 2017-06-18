@@ -3,6 +3,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: weechat-backup-config
+  namespace: kube-weechat
 data:
   crontab: |
     */5 * * * * /bin/sh /sync.sh
@@ -11,6 +12,7 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: weechat
+  namespace: kube-weechat
 spec:
   selector:
     matchLabels:
